@@ -1,0 +1,23 @@
+{
+  "dependencies": {
+    "purescript-halogen": "^v7.0.0",
+    "purescript-halogen-css": "^v10.0.0",
+    "purescript-options": "^v7.0.0",
+    "purescript-profunctor-lenses": "^v8.0.0",
+    "purescript-xterm": "https://github.com/grybiena/xterm.git#v1.0.0"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "license": [
+    "MIT"
+  ],
+  "name": "purescript-halogen-xterm",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/grybiena/halogen-xterm.git"
+  }
+}
