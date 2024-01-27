@@ -7,7 +7,9 @@ import Control.Monad.Free (Free, liftF)
 import Control.Monad.Rec.Class (class MonadRec)
 import Control.Monad.State (State, execState)
 import Data.Array (cons)
+import Data.Maybe (Maybe, maybe)
 import Data.Symbol (class IsSymbol)
+import Data.Tuple (snd)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen as H
@@ -18,6 +20,7 @@ import Halogen.Terminal as Terminal
 import Halogen.Terminal.Free (TerminalM)
 import Prim.Row (class Cons)
 import Type.Prelude (Proxy)
+import XTerm.Terminal (Terminal)
 
 type Slots w =
   ( terminal :: H.Slot TerminalM Terminal.Output Unit
@@ -26,26 +29,33 @@ type Slots w =
 
 
 
-newtype WindowSlot :: forall k1 k2. Type -> Row Type -> (Type -> Type) -> k1 -> k2 -> Type
-newtype WindowSlot o w m query output = 
-  WindowSlot {
-    window :: H.ComponentHTML (Action o) (Slots w) m
+type ShellState w s o m =
+  { shell :: s 
+  , interpreter :: Terminal.Output -> ShellM w s o m Unit
+  , terminal :: Maybe Terminal
+  , windows :: WindowSlots w s o m 
   }
 
-data Action o =
+
+newtype WindowSlot w s o m query output = 
+  WindowSlot {
+    window :: H.ComponentHTML (Action w s o m) (Slots w) m
+  }
+
+data Action w s o m =
     Initialize
   | TerminalOutput Terminal.Output
-  | RaiseOutput o
+  | RunShell (ShellM w s o m Unit)
 
 
-renderWindows :: forall o w m. WindowSlots o w m -> Array (H.ComponentHTML (Action o) (Slots w) m)
+renderWindows :: forall w s o m. WindowSlots w s o m -> Array (H.ComponentHTML (Action w s o m) (Slots w) m)
 renderWindows slots = execState (foreachSlot slots renderWindows') []
   where
     renderWindows' :: forall query output.
-                      WindowSlot o w m query output -> State (Array (H.ComponentHTML (Action o) (Slots w) m)) Unit 
+                      WindowSlot w s o m query output -> State (Array (H.ComponentHTML (Action w s o m) (Slots w) m)) Unit 
     renderWindows' (WindowSlot { window }) = H.modify_ (cons window)
 
-type WindowSlots a w m = SlotStorage w (WindowSlot a w m)
+type WindowSlots w s o m = SlotStorage w (WindowSlot w s o m)
 
 
 
@@ -58,8 +68,11 @@ data ShellF w s o m r =
   | Interpreter (Terminal.Output -> ShellM w s o m Unit) r
   | Output o r
 
-  | GetWindowSlots (WindowSlots o w m -> r)
-  | ModifyWindowSlots (WindowSlots o w m -> WindowSlots o w m) r
+  | LiftHalogen (H.HalogenM (ShellState w s o m) (Action w s o m) (Slots w) o m r) 
+
+
+  | GetWindowSlots (WindowSlots w s o m -> r)
+  | ModifyWindowSlots (WindowSlots w s o m -> WindowSlots w s o m) r
 
 
 instance Functor m => Functor (ShellF w s o m) where
@@ -69,6 +82,7 @@ instance Functor m => Functor (ShellF w s o m) where
   map f (PutShell s a) = PutShell s (f a)
   map f (Interpreter s a) = Interpreter s (f a)
   map f (Output o a) = Output o (f a)
+  map f (LiftHalogen m) = LiftHalogen (f <$> m)
   map f (GetWindowSlots s) = GetWindowSlots (f <<< s)
   map f (ModifyWindowSlots s a) = ModifyWindowSlots s (f a)
 
@@ -113,19 +127,46 @@ interpreter i = ShellM $ liftF $ Interpreter i unit
 output :: forall w s o m . o -> ShellM w s o m Unit
 output o = ShellM $ liftF $ Output o unit
 
-modifyWindowSlots :: forall w s o m . (WindowSlots o w m -> WindowSlots o w m) -> ShellM w s o m Unit
+liftHalogen :: forall w s o m r . H.HalogenM (ShellState w s o m) (Action w s o m) (Slots w) o m r -> ShellM w s o m r
+liftHalogen f = ShellM $ liftF $ LiftHalogen f 
+
+
+modifyWindowSlots :: forall w s o m . (WindowSlots w s o m -> WindowSlots w s o m) -> ShellM w s o m Unit
 modifyWindowSlots f = ShellM $ liftF $ ModifyWindowSlots f unit
 
-newWindow :: forall q i o _1 sh so sym px s w m.
-             Cons sym (Slot q o s) _1 (Slots w)
+openWindow :: forall q' o' i' _1 s o sym px i w m.
+             Cons sym (Slot q' o' i) _1 (Slots w)
           => IsSymbol sym
-          => Ord s
-          => Cons sym (Slot q o s) px w
+          => Ord i
+          => Cons sym (Slot q' o' i) px w
           => Proxy sym
-          -> s
-          -> H.Component q i o m
-          -> i -> (o -> so) -> ShellM w sh so m Unit
-newWindow label i component input actout = do
-  let window = HH.slot label i component input (RaiseOutput <<< actout) 
+          -> i
+          -> H.Component q' i' o' m
+          -> i' -> (o' -> ShellM w s o m Unit) -> ShellM w s o m Unit
+openWindow label i component input actout = do
+  let window = HH.slot label i component input (RunShell <<< actout) 
   modifyWindowSlots (Slots.insert label i (WindowSlot { window }))
+
+queryWindow :: forall q o' _1 s o sym px i w m a.
+             Cons sym (Slot q o' i) _1 (Slots w)
+          => IsSymbol sym
+          => Ord i
+          => Cons sym (Slot q o' i) px w
+          => Proxy sym
+          -> i
+          -> q a 
+          -> ShellM w s o m (Maybe a)
+queryWindow label i query = liftHalogen (H.query label i query)
+
+closeWindow :: forall q' o' _1 s o sym px i w m.
+             Cons sym (Slot q' o' i) _1 (Slots w)
+          => IsSymbol sym
+          => Ord i
+          => Cons sym (Slot q' o' i) px w
+          => Proxy sym
+          -> i
+          -> ShellM w s o m Unit
+closeWindow label i = do
+  modifyWindowSlots (\ss -> maybe ss snd (Slots.pop label i ss))
+
 
