@@ -23,11 +23,11 @@ instance CommandLine (String /\ String) where
   cmd = _2
   prompt = _1
 
-commandLine :: forall shell o m .
+commandLine :: forall w s o m .
             MonadEffect m
-         => CommandLine shell
-         => ShellM shell o m Unit 
-         -> String -> ShellM shell o m Unit 
+         => CommandLine s
+         => ShellM w s o m Unit 
+         -> String -> ShellM w s o m Unit 
 commandLine runCommand =
   case _ of
     -- Ctrl+C
@@ -50,10 +50,10 @@ commandLine runCommand =
       liftEffect $ log $ "non-printable: " <> e
       pure unit
  
-backspace :: forall shell o m .
+backspace :: forall w s o m .
             MonadEffect m
-         => CommandLine shell
-         => ShellM shell o m Unit 
+         => CommandLine s
+         => ShellM w s o m Unit 
 backspace = do
   shell <- getShell
   terminal do
@@ -79,21 +79,21 @@ backspace = do
   modifyShell (cmd %~ dropRight 1)
 
 
-textInterpreter :: forall shell o m .
+textInterpreter :: forall w s o m .
             MonadEffect m
-         => (String -> ShellM shell o m Unit)
-         -> Terminal.Output -> ShellM shell o m Unit 
+         => (String -> ShellM w s o m Unit)
+         -> Terminal.Output -> ShellM w s o m Unit 
 textInterpreter interpret =
   case _ of
     Terminal.Data d -> interpret d
     Terminal.LineFeed -> liftEffect $ log "line feed"
     _ -> pure unit
 
-runRepl :: forall shell o m .
+runRepl :: forall w s o m .
         MonadEffect m
-     => CommandLine shell
-     => (String -> ShellM shell o m String)
-     -> ShellM shell o m Unit 
+     => CommandLine s
+     => (String -> ShellM w s o m String)
+     -> ShellM w s o m Unit 
 runRepl repl = do 
   shell <- getShell
   modifyShell (cmd .~ "")
