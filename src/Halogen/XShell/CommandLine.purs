@@ -1,4 +1,4 @@
--- | A collection of command line interface building utilities. 
+-- | A collection of command line interface building utilities. [See example implementation](https://github.com/grybiena/grybiena.github.io/blob/2388184bcf26dfa3bfa8d5209e53f40c313df0e0/halogen-xterm-example/src/Example.purs) for a usage example.
 module Halogen.XShell.CommandLine where
 
 import Prelude
