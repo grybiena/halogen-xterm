@@ -1,5 +1,6 @@
 module Halogen.XShell
   ( component
+  , module Shell
   ) where
 
 import Prelude
@@ -13,6 +14,17 @@ import Halogen as H
 import Halogen.Data.Slot as Slot
 import Halogen.HTML as HH
 import Halogen.XShell.Free (Action(..), ShellF(..), ShellM(..), ShellState, Slots, renderWindows)
+import Halogen.XShell.Free (
+   terminal
+ , getShell
+ , putShell
+ , modifyShell
+ , interpreter
+ , output
+ , openWindow
+ , queryWindow
+ , closeWindow
+ ) as Shell
 import Halogen.XTerm as Terminal
 import Type.Proxy (Proxy(..))
 import XTerm.Options (cursorBlink, fontFamily)
