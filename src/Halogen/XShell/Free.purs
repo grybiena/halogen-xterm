@@ -1,4 +1,4 @@
-module Halogen.Shell.Free where
+module Halogen.XShell.Free where
 
 import Prelude
 
@@ -16,8 +16,8 @@ import Halogen as H
 import Halogen.Data.Slot (Slot, SlotStorage, foreachSlot)
 import Halogen.Data.Slot as Slots
 import Halogen.HTML as HH
-import Halogen.Terminal as Terminal
-import Halogen.Terminal.Free (TerminalM)
+import Halogen.XTerm as Terminal
+import Halogen.XTerm.Free (TerminalM)
 import Prim.Row (class Cons)
 import Type.Prelude (Proxy)
 import XTerm.Terminal (Terminal)

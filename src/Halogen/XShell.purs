@@ -1,4 +1,4 @@
-module Halogen.Shell
+module Halogen.XShell
   ( component
   ) where
 
@@ -12,8 +12,8 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.Data.Slot as Slot
 import Halogen.HTML as HH
-import Halogen.Shell.Free (Action(..), ShellF(..), ShellM(..), ShellState, Slots, renderWindows)
-import Halogen.Terminal as Terminal
+import Halogen.XShell.Free (Action(..), ShellF(..), ShellM(..), ShellState, Slots, renderWindows)
+import Halogen.XTerm as Terminal
 import Type.Proxy (Proxy(..))
 import XTerm.Options (cursorBlink, fontFamily)
 import XTerm.Terminal (new)

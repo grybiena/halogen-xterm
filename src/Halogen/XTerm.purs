@@ -1,4 +1,4 @@
-module Halogen.Terminal
+module Halogen.XTerm
   ( Output(..)
   , component
   ) where
@@ -16,8 +16,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.CSS (stylesheet)
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
-import Halogen.Terminal.CSS (xtermCSS)
-import Halogen.Terminal.Free (TerminalM, runTerminal)
+import Halogen.XTerm.CSS (xtermCSS)
+import Halogen.XTerm.Free (TerminalM, runTerminal)
 import XTerm.Disposable (Disposable, dispose)
 import XTerm.Terminal (BinaryString, Key, RowRange, Terminal, ViewportSize, ViewportYOffset, onBell, onBinary, onData, onKey, onLineFeed, onRender, onResize, onScroll, onSelectionChange, onTitleChange, onWriteParsed, openTerminal)
 

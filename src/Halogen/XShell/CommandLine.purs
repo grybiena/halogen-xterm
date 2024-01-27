@@ -1,4 +1,4 @@
-module Halogen.Shell.CommandLine where
+module Halogen.XShell.CommandLine where
 
 import Prelude
 
@@ -9,10 +9,10 @@ import Data.Traversable (traverse, traverse_)
 import Data.Tuple.Nested (type (/\))
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Console (log)
-import Halogen.Buffer.Free (bufferLength, cursorX, getBufferLine, lineLength)
-import Halogen.Shell.Free (ShellM, getShell, modifyShell, terminal)
-import Halogen.Terminal.Free (withActiveBuffer, write)
-import Halogen.Terminal as Terminal
+import Halogen.Free.Buffer (bufferLength, cursorX, getBufferLine, lineLength)
+import Halogen.XShell.Free (ShellM, getShell, modifyShell, terminal)
+import Halogen.XTerm.Free (withActiveBuffer, write)
+import Halogen.XTerm as Terminal
 
 
 class CommandLine shell where

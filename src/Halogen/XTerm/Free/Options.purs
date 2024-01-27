@@ -1,4 +1,4 @@
-module Halogen.Terminal.Free.Options where
+module Halogen.XTerm.Free.Options where
 
 import Prelude
 
