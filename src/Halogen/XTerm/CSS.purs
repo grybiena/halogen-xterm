@@ -1,4 +1,4 @@
-module Halogen.Terminal.CSS where
+module Halogen.XTerm.CSS where
 
 import Prelude hiding (top, bottom)
 

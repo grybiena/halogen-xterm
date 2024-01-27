@@ -1,6 +1,10 @@
-module Halogen.Terminal
+module Halogen.XTerm
   ( Output(..)
   , component
+  , module XTermCSS
+  , module XTermFree
+  , module XTermFreeOptions
+  , module XTermFreeBuffer
   ) where
 
 import Prelude
@@ -16,8 +20,48 @@ import Halogen.HTML as HH
 import Halogen.HTML.CSS (stylesheet)
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
-import Halogen.Terminal.CSS (xtermCSS)
-import Halogen.Terminal.Free (TerminalM, runTerminal)
+import Halogen.XTerm.CSS (xtermCSS)
+import Halogen.XTerm.CSS (xtermCSS) as XTermCSS
+import Halogen.XTerm.Free (
+    TerminalM
+  , options
+  , terminalElement
+  , textArea
+  , rows
+  , cols
+  , withActiveBuffer
+  , withNormalBuffer
+  , withAlternateBuffer
+  , markers
+  , write
+  , writeLn
+  , fitAddon
+  , webLinksAddon
+  , webGLAddon
+  , loadAddon
+  , loadAddons
+  ) as XTermFree
+import Halogen.XTerm.Free (TerminalM, runTerminal)
+import Halogen.XTerm.Free.Options (
+    OptionsM
+  , getCursorBlink
+  , setCursorBlink
+  , getFontFamily
+  , setFontFamily
+  ) as XTermFreeOptions
+import Halogen.XTerm.Free.Buffer (
+    BufferM
+  , bufferType
+  , cursorX
+  , cursorY
+  , viewportY
+  , baseY
+  , bufferLength
+  , getBufferLine
+  , getNullCell
+  , isWrapped
+  , lineLength
+  ) as XTermFreeBuffer
 import XTerm.Disposable (Disposable, dispose)
 import XTerm.Terminal (BinaryString, Key, RowRange, Terminal, ViewportSize, ViewportYOffset, onBell, onBinary, onData, onKey, onLineFeed, onRender, onResize, onScroll, onSelectionChange, onTitleChange, onWriteParsed, openTerminal)
 
