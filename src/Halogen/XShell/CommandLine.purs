@@ -16,11 +16,11 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Console (log)
-import Halogen.Free.Buffer (bufferLength, cursorX, getBufferLine, lineLength)
 import Halogen.XShell (interpreter)
 import Halogen.XShell.Free (ShellM, getShell, modifyShell, terminal)
 import Halogen.XTerm as Terminal
 import Halogen.XTerm.Free (options, withActiveBuffer, write, writeLn)
+import Halogen.XTerm.Free.Buffer (bufferLength, cursorX, getBufferLine, lineLength)
 import Halogen.XTerm.Free.Options (setCursorBlink)
 
 class CommandLine shell where

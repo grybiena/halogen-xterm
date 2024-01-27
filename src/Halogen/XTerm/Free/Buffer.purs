@@ -1,4 +1,4 @@
-module Halogen.Free.Buffer where
+module Halogen.XTerm.Free.Buffer where
 
 import Prelude
 

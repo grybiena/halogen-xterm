@@ -11,7 +11,7 @@ import Effect.Aff (launchAff_, try)
 import Effect.Aff.AVar as AVar
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (liftEffect)
-import Halogen.Free.Buffer (BufferM, runBuffer)
+import Halogen.XTerm.Free.Buffer (BufferM, runBuffer)
 import Halogen.XTerm.Free.Options (OptionsM, runOptions)
 import Web.DOM (Element)
 import XTerm.Addons (class Addon, FitAddon, TerminalAddon, WebGLAddon, WebLinksAddon, addon)
