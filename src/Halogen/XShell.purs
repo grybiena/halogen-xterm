@@ -13,7 +13,7 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.Data.Slot as Slot
 import Halogen.HTML as HH
-import Halogen.XShell.Free (Action(..), ShellF(..), ShellM(..), ShellState, Slots, renderWindows)
+import Halogen.XShell.Free (Action(..), ShellF(..), ShellM(..), XShell, Slots, renderWindows)
 import Halogen.XShell.Free (
    terminal
  , getShell
@@ -43,7 +43,7 @@ component = do
                                      }
     }
 
-render :: forall w s o m. MonadAff m => ShellState w s o m -> H.ComponentHTML (Action w s o m) (Slots w) m
+render :: forall w s o m. MonadAff m => XShell w s o m -> H.ComponentHTML (Action w s o m) (Slots w) m
 render { terminal, windows } =
   HH.div_
     ([ case terminal of
@@ -57,7 +57,7 @@ render { terminal, windows } =
 handleAction :: forall w s o m .
                 MonadAff m
              => Action w s o m
-             -> H.HalogenM (ShellState w s o m) (Action w s o m) (Slots w) o m Unit
+             -> H.HalogenM (XShell w s o m) (Action w s o m) (Slots w) o m Unit
 handleAction = case _ of
   Initialize -> do
     terminal <- H.liftEffect $ new (fontFamily := "\"Cascadia Code\", Menlo, monospace"
@@ -74,7 +74,7 @@ handleAction = case _ of
 runShellM :: forall w s o m a .
             MonadAff m
          => ShellM w s o m a
-         -> H.HalogenM (ShellState w s o m) (Action w s o m) (Slots w) o m (Maybe a)
+         -> H.HalogenM (XShell w s o m) (Action w s o m) (Slots w) o m (Maybe a)
 runShellM (ShellM s) = runMaybeT $ runFreeM go s
   where
     go (Terminal f) = do

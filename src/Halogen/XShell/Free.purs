@@ -27,9 +27,7 @@ type Slots w =
   | w
   )
 
-
-
-type ShellState w s o m =
+type XShell w s o m =
   { shell :: s 
   , interpreter :: Terminal.Output -> ShellM w s o m Unit
   , terminal :: Maybe Terminal
@@ -58,8 +56,6 @@ renderWindows slots = execState (foreachSlot slots renderWindows') []
 type WindowSlots w s o m = SlotStorage w (WindowSlot w s o m)
 
 
-
-
 data ShellF w s o m r =
     Terminal (TerminalM r)
   | Lift (m r)
@@ -67,10 +63,7 @@ data ShellF w s o m r =
   | PutShell s r
   | Interpreter (Terminal.Output -> ShellM w s o m Unit) r
   | Output o r
-
-  | LiftHalogen (H.HalogenM (ShellState w s o m) (Action w s o m) (Slots w) o m r) 
-
-
+  | LiftHalogen (H.HalogenM (XShell w s o m) (Action w s o m) (Slots w) o m r) 
   | GetWindowSlots (WindowSlots w s o m -> r)
   | ModifyWindowSlots (WindowSlots w s o m -> WindowSlots w s o m) r
 
@@ -127,7 +120,7 @@ interpreter i = ShellM $ liftF $ Interpreter i unit
 output :: forall w s o m . o -> ShellM w s o m Unit
 output o = ShellM $ liftF $ Output o unit
 
-liftHalogen :: forall w s o m r . H.HalogenM (ShellState w s o m) (Action w s o m) (Slots w) o m r -> ShellM w s o m r
+liftHalogen :: forall w s o m r . H.HalogenM (XShell w s o m) (Action w s o m) (Slots w) o m r -> ShellM w s o m r
 liftHalogen f = ShellM $ liftF $ LiftHalogen f 
 
 
