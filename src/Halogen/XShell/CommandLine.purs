@@ -1,19 +1,27 @@
+-- | A collection of command line interface building utilities. 
 module Halogen.XShell.CommandLine where
 
 import Prelude
 
-import Data.Lens (Lens', _1, _2, (%~), (.~), (^.))
-import Data.String (length, null, trim)
+import Control.Monad.Rec.Class (class MonadRec)
+import Data.Array (filter, head, tail)
+import Data.Lens (Lens', _1, _2, lens', (%~), (.~), (^.))
+import Data.Map (Map)
+import Data.Map as Map
+import Data.Maybe (Maybe(..), maybe)
+import Data.String (Pattern(..), joinWith, length, null, split, trim)
 import Data.String.CodeUnits (dropRight, takeRight)
 import Data.Traversable (traverse, traverse_)
-import Data.Tuple.Nested (type (/\))
+import Data.Tuple.Nested (type (/\), (/\))
+import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Console (log)
 import Halogen.Free.Buffer (bufferLength, cursorX, getBufferLine, lineLength)
+import Halogen.XShell (interpreter)
 import Halogen.XShell.Free (ShellM, getShell, modifyShell, terminal)
-import Halogen.XTerm.Free (withActiveBuffer, write)
 import Halogen.XTerm as Terminal
-
+import Halogen.XTerm.Free (options, withActiveBuffer, write, writeLn)
+import Halogen.XTerm.Free.Options (setCursorBlink)
 
 class CommandLine shell where
   cmd :: Lens' shell String
@@ -22,6 +30,29 @@ class CommandLine shell where
 instance CommandLine (String /\ String) where
   cmd = _2
   prompt = _1
+
+newtype ShellState w o m =
+  ShellState {
+    prompt :: String
+  , command :: String
+  , commandEnv :: Array (Command w o m)
+  , foreground :: Maybe (ProcessHandle w o m)
+  }
+
+instance CommandLine (ShellState w o m) where
+  cmd = lens' (\(ShellState s) -> s.command /\ (\c -> ShellState (s { command = c }))) 
+  prompt = lens' (\(ShellState s) -> s.prompt /\ (\c -> ShellState (s { prompt = c }))) 
+
+type ProcessHandle w o m =
+  { stdin :: String -> ShellM w (ShellState w o m) o m Unit
+  , kill :: ShellM w (ShellState w o m) o m Unit
+  }
+
+type Command w o m =
+  { name :: String
+  , description :: Array String
+  , cmd :: Array String -> ShellM w (ShellState w o m) o m Unit
+  }
 
 commandLine :: forall w s o m .
             MonadEffect m
@@ -103,5 +134,75 @@ runRepl repl = do
       write ("\r\n" <> res) 
     write ("\r\n" <> (shell ^. prompt))
 
+canceler :: forall w o m . MonadAff m => MonadRec m => Terminal.Output -> ShellM w (ShellState w o m) o m Unit
+canceler = textInterpreter $ case _ of 
+                                -- Ctrl+C
+                                "\x0003" -> do
+                                   terminal $ write "^C"
+                                   cancel
+                                s -> commandLine attach s
+
+cancel :: forall w o m . MonadAff m => MonadRec m => ShellM w (ShellState w o m) o m Unit
+cancel = do 
+  ShellState sh <- getShell
+  flip traverse_ sh.foreground $ \f -> do
+     f.kill
+  modifyShell (\(ShellState st) -> ShellState (st { foreground = Nothing }))
+  modifyShell (cmd .~ "")
+  shell' <- getShell
+  terminal do
+    options $ setCursorBlink true
+    write ("\r\n" <> (shell' ^. prompt))
+  interpreter (textInterpreter $ commandLine (prog sh.commandEnv))
+
+
+attach :: forall w o m . MonadAff m => ShellM w (ShellState w o m) o m Unit
+attach = do
+  sh@(ShellState { foreground }) <- getShell
+  flip traverse_ foreground $ \f -> do
+    f.stdin (sh ^. cmd)
+  terminal $ write "\r\n"
+  modifyShell (cmd .~ "")
+
+
+commandMap :: forall w o m.
+              MonadAff m
+           => MonadRec m
+           => Array (Command w o m) -> Map String (Array String -> ShellM w (ShellState w o m) o m Unit)
+commandMap cmds = Map.insert "help" helpCmd (Map.fromFoldable ((\cmd -> cmd.name /\ cmd.cmd) <$> cmds))
+  where
+    helpCmd _ = do
+       terminal $ writeLn $ helpText cmds
+       shell' <- getShell
+       terminal $ write (shell' ^. prompt)
+       modifyShell (cmd .~ "")
+
+    helpText a = helpTxt <> joinWith "" (cmdHelp <$> a) 
+      where
+        helpTxt = "\r\n  " <> "help" <> "\r\n    show this help text"
+        cmdHelp cmd = "\r\n  " <> cmd.name <> "\r\n    " <> (joinWith "\r\n    " cmd.description)
+
+
+prog :: forall w o m . MonadAff m => MonadRec m => Array (Command w o m) -> ShellM w (ShellState w o m) o m Unit
+prog commands = do
+  let cmds = commandMap commands
+  sh <- getShell
+  let cmdArgs = filter (not <<< null) $ split (Pattern " ") (sh ^. cmd)
+  case head cmdArgs of    
+    Nothing -> do 
+      terminal do
+        writeLn $ ""
+      shell' <- getShell
+      terminal $ write (shell' ^. prompt)
+      modifyShell (cmd .~ "")
+    Just c ->
+      case Map.lookup c cmds of
+        Just run -> run $ maybe [] identity (tail cmdArgs)
+        Nothing -> do
+          terminal do
+            writeLn $ "\r\nunrecognised command \"" <> c <> "\" - type \"help\" to see the available commands"
+          shell' <- getShell
+          terminal $ write (shell' ^. prompt)
+          modifyShell (cmd .~ "")
 
 
