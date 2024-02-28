@@ -110,6 +110,7 @@ handleAction = case _ of
         outputSelectionChange terminal
         outputTitleChange terminal
         outputData terminal
+        liftEffect $ fit fa
         observe fa el
   ContainerResize fa -> liftEffect $ fit fa
   Finalize -> do
