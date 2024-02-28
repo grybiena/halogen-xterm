@@ -5,6 +5,7 @@ module Halogen.XShell
 
 import Prelude
 
+import CSS (height, pct, width)
 import Control.Monad.Free (runFreeM)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Data.Maybe (Maybe(..))
@@ -13,18 +14,9 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.Data.Slot as Slot
 import Halogen.HTML as HH
+import Halogen.HTML.CSS (style)
 import Halogen.XShell.Free (Action(..), ShellF(..), ShellM(..), XShell, Slots, renderWindows)
-import Halogen.XShell.Free (
-   terminal
- , getShell
- , putShell
- , modifyShell
- , interpreter
- , output
- , openWindow
- , queryWindow
- , closeWindow
- ) as Shell
+import Halogen.XShell.Free (terminal, getShell, putShell, modifyShell, interpreter, output, openWindow, queryWindow, closeWindow) as Shell
 import Halogen.XTerm as Terminal
 import Type.Proxy (Proxy(..))
 import XTerm.Options (cursorBlink, fontFamily)
@@ -45,7 +37,11 @@ component = do
 
 render :: forall w s o m. MonadAff m => XShell w s o m -> H.ComponentHTML (Action w s o m) (Slots w) m
 render { terminal, windows } =
-  HH.div_
+  HH.div
+    [ style do
+        width (pct 100.0)
+        height (pct 100.0)
+    ]
     ([ case terminal of
          Nothing -> HH.div_ []
          Just te -> HH.slot _terminal unit Terminal.component te TerminalOutput

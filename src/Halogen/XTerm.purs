@@ -9,61 +9,30 @@ module Halogen.XTerm
 
 import Prelude
 
+import CSS (height, pct, width)
 import Control.Monad.Reader (runReaderT)
 import Data.Array ((:))
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse_)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.CSS (stylesheet)
+import Halogen.HTML.CSS (style, stylesheet)
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
 import Halogen.XTerm.CSS (xtermCSS)
 import Halogen.XTerm.CSS (xtermCSS) as XTermCSS
-import Halogen.XTerm.Free (
-    TerminalM
-  , options
-  , terminalElement
-  , textArea
-  , rows
-  , cols
-  , withActiveBuffer
-  , withNormalBuffer
-  , withAlternateBuffer
-  , markers
-  , write
-  , writeLn
-  , fitAddon
-  , webLinksAddon
-  , webGLAddon
-  , loadAddon
-  , loadAddons
-  ) as XTermFree
+import Halogen.XTerm.Free (TerminalM, options, terminalElement, textArea, rows, cols, withActiveBuffer, withNormalBuffer, withAlternateBuffer, markers, write, writeLn, fitAddon, webLinksAddon, webGLAddon, loadAddon, loadAddons) as XTermFree
 import Halogen.XTerm.Free (TerminalM, runTerminal)
-import Halogen.XTerm.Free.Options (
-    OptionsM
-  , getCursorBlink
-  , setCursorBlink
-  , getFontFamily
-  , setFontFamily
-  ) as XTermFreeOptions
-import Halogen.XTerm.Free.Buffer (
-    BufferM
-  , bufferType
-  , cursorX
-  , cursorY
-  , viewportY
-  , baseY
-  , bufferLength
-  , getBufferLine
-  , getNullCell
-  , isWrapped
-  , lineLength
-  ) as XTermFreeBuffer
+import Halogen.XTerm.Free.Buffer (BufferM, bufferType, cursorX, cursorY, viewportY, baseY, bufferLength, getBufferLine, getNullCell, isWrapped, lineLength) as XTermFreeBuffer
+import Halogen.XTerm.Free.Options (OptionsM, getCursorBlink, setCursorBlink, getFontFamily, setFontFamily) as XTermFreeOptions
+import Web.Resize.Observer (newResizeObserver)
+import Web.Resize.Observer as WRO
+import XTerm.Addons.Fit (FitAddon, fit, fitAddon)
 import XTerm.Disposable (Disposable, dispose)
-import XTerm.Terminal (BinaryString, Key, RowRange, Terminal, ViewportSize, ViewportYOffset, onBell, onBinary, onData, onKey, onLineFeed, onRender, onResize, onScroll, onSelectionChange, onTitleChange, onWriteParsed, openTerminal)
+import XTerm.Terminal (BinaryString, Key, RowRange, Terminal, ViewportSize, ViewportYOffset, loadAddon, onBell, onBinary, onData, onKey, onLineFeed, onRender, onResize, onScroll, onSelectionChange, onTitleChange, onWriteParsed, openTerminal)
 
 type State =
   { terminal :: Terminal
@@ -74,6 +43,7 @@ data Action =
     Initialize
   | Finalize
   | Raise Output
+  | ContainerResize FitAddon 
 
 data Output =
     Data String
@@ -102,9 +72,17 @@ component = do
 
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action () m
-render _ = HH.div_
+render _ = HH.div
+             [ style do
+                 width (pct 100.0)
+                 height (pct 100.0)
+             ]
              [ stylesheet xtermCSS
-             , HH.div [ HP.ref (H.RefLabel "terminal")] []
+             , HH.div [ style do
+                          width (pct 100.0)
+                          height (pct 100.0)
+                      , HP.ref (H.RefLabel "terminal")
+                      ] []
              ] 
 
 handleAction :: forall m .
@@ -118,6 +96,8 @@ handleAction = case _ of
       Nothing -> H.liftEffect $ log "no terminal element"
       Just el -> do
         { terminal } <- H.get
+        fa <- liftEffect fitAddon
+        liftEffect $ loadAddon terminal fa
         H.liftEffect $ openTerminal terminal el
         outputBell terminal
         outputBinary terminal
@@ -130,11 +110,18 @@ handleAction = case _ of
         outputSelectionChange terminal
         outputTitleChange terminal
         outputData terminal
+        observe fa el
+  ContainerResize fa -> liftEffect $ fit fa
   Finalize -> do
     { disposables } <- H.get
     H.liftEffect $ traverse_ dispose disposables
   Raise o -> H.raise o
   where
+    observe fa e = do 
+      { emitter, listener } <- H.liftEffect HS.create
+      void $ H.subscribe emitter
+      ro <- H.liftEffect $ newResizeObserver (\_ _ -> HS.notify listener (ContainerResize fa))
+      H.liftEffect $ WRO.observe ro e 
     outputBell terminal = do
       { listener, emitter } <- H.liftEffect HS.create
       disposable <- H.liftEffect $ onBell terminal (HS.notify listener $ Raise $ Bell) 

@@ -5,6 +5,7 @@
       [ halogen
         halogen-css
         profunctor-lenses
+        resize-observer
         options
         xterm
       ];
